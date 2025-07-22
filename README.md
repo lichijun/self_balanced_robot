@@ -1,0 +1,2 @@
+# self_balanced_robot
+LQR控制算法在两轮自平衡小车的实践
