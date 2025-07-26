@@ -60,9 +60,10 @@ void ResetStateVar(StateVariable* pState)
 void BalanceCtrlLqr(StateVariable* pState, float* pPwmL, float* pPwmR)
 {
 	float wheel_mess = 0.104; // 两个轮子的重量
-	float accL, accR;
+	float accL, accR, FL, FR;
 	MotorCharacterCoef motorParaL = {-17.41, 0.25, -0.24}; // 空载测试数据回归得到
 	MotorCharacterCoef motorParaR = {-19.93, 0.26, -0.04}; // 空载测试数据回归得到
+	MotorCharacterCoef motorPara = {-2.7968, 0.0348, 0}; // 手册电机参数计算
 #ifdef LQR_4_STATES
 	// float K[4] = {-5.4650, -3.2293, 16.7392, 0.8214}; // Q dia[50, 0, 20, 0]
 	float K[4] = {-3.4470, -2.5848, 16.8864, 0.7930}; // Q dia[20, 0, 40, 0]
@@ -86,6 +87,11 @@ void BalanceCtrlLqr(StateVariable* pState, float* pPwmL, float* pPwmR)
 #endif
 	*pPwmL = (accL - motorParaL.a * pState->wheel_vel_l - motorParaL.c) / motorParaL.b;
 	*pPwmR = (accR - motorParaR.a * pState->wheel_vel_r - motorParaR.c) / motorParaR.b;
+	// 使用更严谨的模型
+	FL = u1/2 - u2; // 每个轮子需要提供的摩擦力
+	FR = u1/2 + u2;
+	*pPwmL = (FL - motorPara.a * pState->wheel_vel_l - motorPara.c) / motorPara.b;
+	*pPwmR = (FR - motorPara.a * pState->wheel_vel_r - motorPara.c) / motorPara.b;
 	if (*pPwmL > 100)
 		*pPwmL = 100;
 	if (*pPwmR > 100)

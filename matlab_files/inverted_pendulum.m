@@ -126,7 +126,6 @@ d = 0.075;   % 转动惯量测试参数0.12m
 L = 0.17;  % 转动惯量测试参数0.465m
 g = 9.8;
 IW = mW*g*d^2 / (16*pi^2*L) * (T/50)^2;
-Iwr = IW*(1+1/0.06);
 
 p = I*(M+m)+M*m*l^2; %denominator for the A and B matrices
 
@@ -231,6 +230,9 @@ set(get(AX(1),'Ylabel'),'String','cart position (m)')
 set(get(AX(2),'Ylabel'),'String','pendulum angle (radians)')
 title('Step Response with LQR Control')
 
+plot(x(2:501,1))
+plot([x(2:501,1), (x(2:501,1) - x(1:500,1))./0.01])
+
 %反算电机pwm
 ud = (-Kd * x')';
 acc_L = (ud(:,1) / 2 - ud(:,2)) / M; % 左轮加速度
@@ -242,7 +244,12 @@ PWM_R = (acc_R - motor_para_R(1) * x(:, 2) - motor_para_R(3)) / motor_para_R(2);
 
 F_L = (ud(:,1) / 2 - ud(:,2)); % 左轮力
 F_R = (ud(:,1) / 2 + ud(:,2)); % 右轮力
-motor_para_L = [-17.41, 0.25] * Iwr/Rw;
-motor_para_R = [-19.93, 0.26] * Iwr/Rw;
-PWM_L = (F_L - motor_para_L(1) * x(:, 2)/Rw) / motor_para_L(2); % x(:, 2)用单轮当前线速度更准确
-PWM_R = (F_R - motor_para_R(1) * x(:, 2)/Rw) / motor_para_R(2);
+motor_para = [-0.003933, 0.13038];
+Iwr = 0.00016;
+omega = x(:, 2)/Rw;
+omega_dot = (omega(2:end) - omega(1:end-1)) / Ts;
+omega_dot = [0; omega_dot];
+PWM_L = (F_L - motor_para(1)/Rw * omega + Iwr/Rw*omega_dot) / (motor_para(2)/Rw); % x(:, 2)用单轮当前线速度更准确
+PWM_R = (F_R - motor_para(1)/Rw * omega + Iwr/Rw*omega_dot) / (motor_para(2)/Rw);
+para1 = motor_para(1)/Rw/Rw
+para2 = motor_para(2)/Rw*0.01

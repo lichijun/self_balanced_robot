@@ -92,28 +92,34 @@ H_f=\frac{1}{r}(-I_W\dot{\omega}-I_R\dot{\omega}+\frac{-k_mk_e}{R}\omega+\frac{k
 $$
 （参考资料：[Balancing a Two-Wheeled   Autonomous Robot](https://www.cs.cmu.edu/~mmcnaugh/kdc/as7/2003-Balance-Ooi.pdf)）
 
-### 电机参数辨识
+电机MC520P30_12V手册：
 
-仅仅得到轮子摩擦力和电机PWM占空比的关系并不够，需要对表达式中的参数进行辨识。
+根据堵转电流计算电机电阻$R=\frac{12}{3.75}=3.2$和内参基本符合，按内参取$R=2.8$
 
-- 方法一：直接测量滚动摩擦力有困难，需要借助使用滚动摩擦测试机
-- 方法二：可以通过空载测试进行辨识。空载时摩擦力为0，此时：
+根据额定转矩和额定电流计算转矩常数$k_{m}=\frac{1.5/100}{0.36}=0.04167$，内参转矩常数考虑减速比后$k_{m}=101.41\times10^{-5}\times30=0.030423$，按内参取
 
+根据额点电流和额定转速计算反电动势常数$k_e=\frac{12-0.36\times2.8}{290\times\pi/30}=0.3620$，内参单位看不出来
+
+带入电机参数得：
+$$
+\frac{-k_mk_e}{R}=-0.003933 \\
+\frac{k_mV_{amax}}{R}=0.13038
+$$
+
+
+![tb_image_share_1753543224728.jpg](./assets/tb_image_share_1753543224728.jpg.png)
+
+### 转动惯量辨识
+
+通过空载测试进行辨识。空载时摩擦力为0，此时：
 $$
 \dot{\omega}=\frac{1}{I_W+I_R}(\frac{-k_mk_e}{R}\omega+\frac{k_mV_{amax}}{R}D_{pwm})
 $$
 
-空载测试获得数据{$\dot{\omega} \quad D_{pwm}$}，通过线性回归得到$\frac{1}{I_W+I_R}\frac{-k_mk_e}{R}\omega$和$\frac{1}{I_W+I_R}\frac{k_mV_{amax}}{R}D_{pwm}$分别等于-19.6590和0.2735
-
-拆卸轮子，此时有：
+计算后取：
 $$
-\dot{\omega}=\frac{1}{I_R}(\frac{-k_mk_e}{R}\omega+\frac{k_mV_{amax}}{R}D_{pwm})
+I_W+I_R=0.00016
 $$
-空载测试获得数据{$\dot{\omega} \quad D_{pwm}$}，通过线性回归得到$\frac{1}{I_R}\frac{-k_mk_e}{R}\omega$和$\frac{1}{I_R}\frac{k_mV_{amax}}{R}D_{pwm}$分别等于-18.1467和0.2599
-
-然后通过惯量测试或者估算得到$I_W \quad I_R$就能够得到轮子滚动摩擦力和电机PWM占空比表达式中的三个系数
-
-车轮通过扭摆法测得轮子惯量为$2.96\times10^{-5}$，两次空载测试的系数可以估计$\frac{I_w}{I_R}\approx0.06$，最终取$I_W+I_R=5.23\times10^{-4}$
 
 ## Matlab求解LQR反馈矩阵K
 
