@@ -131,6 +131,14 @@ $$
 
 ![1](./assets/1.gif)
 
-[演示视频1](./assets/VID.mp4)
+[演示1](./assets/1.gif)
 
-[演示视频2](./assets/VID1.mp4)
+[演示2](./assets/2.gif)
+
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+tex2jax: {inlineMath: [['$', '$']]},
+messageStyle: "none"
+});
+</script>
