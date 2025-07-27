@@ -126,4 +126,11 @@ $$
 见matlab源程序
 
 ## 实际部署效果
-[演示视频](./assets/VID.mp4)
+
+![2](./assets/2.gif)
+
+![1](./assets/1.gif)
+
+[演示视频1](./assets/VID.mp4)
+
+[演示视频2](./assets/VID1.mp4)

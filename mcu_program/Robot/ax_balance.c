@@ -74,8 +74,10 @@ void BalanceCtrlLqr(StateVariable* pState, float* pPwmL, float* pPwmR)
 #elif defined(LQR_6_STATES)
 	// float K_Row1[6] = {-5.4650, -3.2293, 16.7392, 0.8214, 0, 0}; // Q dia[50, 0, 20, 0, 10, 0]
 	// float K_Row2[6] = {0, 0, 0, 0, 2.9062, 0.3589};
-	float K_Row1[6] = {-3.4470, -2.5848, 16.8864, 0.7930, 0, 0}; // Q dia[20, 0, 40, 0, 20, 0]
-	float K_Row2[6] = {0, 0, 0, 0, 4.0449, 0.4234};
+	// float K_Row1[6] = {-3.4470, -2.5848, 16.8864, 0.7930, 0, 0}; // Q dia[20, 0, 40, 0, 20, 0]
+	// float K_Row2[6] = {0, 0, 0, 0, 4.0449, 0.4234};
+	float K_Row1[6] = {-3.2536, -2.8026, 23.6871, 1.0075, 0, 0}; // Q dia[20, 0, 40, 0, 20, 0] ¼ÓÅäÖØºó
+	float K_Row2[6] = {0, 0, 0, 0, 4.1313, 0.5420};
 	float u1 = - K_Row1[0] * pState->x - K_Row1[1] * pState->x_dot 
 			   - K_Row1[2] * pState->phi - K_Row1[3] * pState->phi_dot
 			   - K_Row1[4] * pState->theta - K_Row1[5] * pState->theta_dot; 
@@ -96,8 +98,9 @@ void BalanceCtrlLqr(StateVariable* pState, float* pPwmL, float* pPwmR)
 		*pPwmL = 100;
 	if (*pPwmR > 100)
 		*pPwmR = 100;
-	printf("pwm %.3f,%.3f wheel %.3f,%.3f\r\n", *pPwmL, *pPwmR, pState->wheel_vel_l, pState->wheel_vel_r);
-	printf("x %.3f,%.3f phi %.3f,%.3f\r\n", pState->x, pState->x_dot, pState->phi, pState->phi_dot);
+	// printf("pwm %.3f,%.3f wheel %.3f,%.3f\r\n", *pPwmL, *pPwmR, pState->wheel_vel_l, pState->wheel_vel_r);
+	// printf("x %.3f,%.3f phi %.3f,%.3f\r\n", pState->x, pState->x_dot, pState->phi, pState->phi_dot);
+	printf("phi%.1f u1%.3f u2%.3f pwm%.1f_%.1f\r\n", pState->phi*180/PI, u1, u2, *pPwmL, *pPwmR);
 }
 
 /**
