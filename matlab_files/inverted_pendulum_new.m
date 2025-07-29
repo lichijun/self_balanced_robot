@@ -1,21 +1,24 @@
 %% 连续系统模型
 M = 0.104; % 小车重（平衡小车轮子的重量52g*2：轮胎37.5g+联轴器13g+轮轴1.5g）
 m = 0.650; % 摆杆重（平衡小车除轮子外的重量650g：总重量754g-两个轮子重量104g）
-b = 0; % 小车摩擦系数：摩擦力/速度（对于平衡小车，摩擦力不是阻力，它对应倒立摆小车的推力，因此取b=0）
-I = 0.000347; % 摆杆惯量（平衡小车除轮子外的部分相对于轮轴的惯量，按重心估算ml^2/3）
-g = 9.8;
+% m = 1.106; % 加配重后
 l = 0.04; % 摆杆重心到铰链的距离（平衡小车除轮子外的部分的重心到轮轴的距离，吊绳估计4cm）
+% l = 0.09; % 加配重后
+I = m*l^2/3; % 摆杆惯量（平衡小车除轮子外的部分相对于轮轴的惯量，按重心估算ml^2/3）
+g = 9.8;
+R_w = 0.075/2; % 轮子半径
+I_w = 0.00016; % 轮子+转子的惯量
 
-p = I*(M+m)+M*m*l^2; %denominator for the A and B matrices
+p = 2*I*I_w + I*M*R_w^2 + I*R_w^2*m + 2*I_w*l^2*m + M*R_w^2*l^2*m; %denominator for the A and B matrices
 
-A = [0      1              0           0;
-     0 -(I+m*l^2)*b/p  (m^2*g*l^2)/p   0;
-     0      0              0           1;
-     0 -(m*l*b)/p       m*g*l*(M+m)/p  0];
-B = [     0;
-     (I+m*l^2)/p;
-          0;
-        m*l/p];
+A = [0      1                          0                       0;
+     0      0                 (R_w^2*g*l^2*m^2)/p              0;
+     0      0                          0                       1;
+     0      0       (l*m*(2*I_w*g + M*R_w^2*g + R_w^2*g*m))/p  0];
+B = [       0;
+     (R_w*(m*l^2 + I))/p;
+            0;
+        (R_w*l*m)/p];
 C = [1 0 0 0;
      0 0 1 0];
 D = [0;
@@ -34,8 +37,8 @@ controllability = rank(co)
 
 %% 连续系统lqr
 Q = C'*C;
-Q(1,1) = 5000;
-Q(3,3) = 100
+Q(1,1) = 20;
+Q(3,3) = 40;
 R = 1;
 K = lqr(A,B,Q,R)
 
@@ -69,7 +72,7 @@ poles = abs(pole(sysd_ss))
 
 %% 离散系统lqr
 Qd =  Cd'*Cd;
-Qd(1,1) = 20;
+Qd(1,1) = 10;
 Qd(2,2) = 0;
 Qd(3,3) = 40;
 Qd(4,4) = 0;
@@ -88,61 +91,55 @@ outputs = {'x'; 'phi'};
 sysd_cl = ss(Adc,Bdc,Cdc,Ddc,Ts,'statename',states,'inputname',inputs,'outputname',outputs);
 
 t = 0:0.01:5;
-r =0.2*ones(size(t));
-[y,t,x]=lsim(sysd_cl,r,t);
+r =zeros(size(t));
+state_init = [0, 0, 5/180*pi, 0];
+[y,t,x]=lsim(sysd_cl,r,t,state_init);
 [AX,H1,H2] = plotyy(t,y(:,1),t,y(:,2),'plot');
 set(get(AX(1),'Ylabel'),'String','cart position (m)')
 set(get(AX(2),'Ylabel'),'String','pendulum angle (radians)')
 title('Step Response with LQR Control')
 
-%反算电机pwm
-ud = (-Kd * x')';
-acc = ud / M / 2; % 单轮加速度
-motor_para_L = [-17.41, 0.25, -0.24];
-motor_para_R = [-19.93, 0.26, -0.04];
-PWM_L = (acc - motor_para_L(1) * x(:, 2) - motor_para_L(3)) / motor_para_L(2); % x(:, 2)用单轮当前线速度更准确
-PWM_R = (acc - motor_para_R(1) * x(:, 2) - motor_para_R(3)) / motor_para_R(2);
+%电机pwm
+ud = (-Kd * x')'; % 单轮所需力矩
+motor_para = [-0.0049, 0.001587];
+PWM = (ud - motor_para(1) * x(:, 2)/R_w) / motor_para(2); % x(:, 2)用单轮当前线速度更准确
 
 %%-------------------------------------------------------------------------
-
-%% 包含航向角的模型
+%绕z轴惯量测试
 M = 0.104; % 小车重（平衡小车轮子的重量52g*2：轮胎37.5g+联轴器13g+轮轴1.5g）
 m = 0.650; % 摆杆重（平衡小车除轮子外的重量650g：总重量754g-两个轮子重量104g）
-m = 1.106; % 加配重后
-b = 0; % 小车摩擦系数：摩擦力/速度（对于平衡小车，摩擦力不是阻力，它对应倒立摆小车的推力，因此取b=0）
-I = 0.000347; % 摆杆惯量（平衡小车除轮子外的部分相对于轮轴的惯量，按重心估算ml^2/3）
 g = 9.8;
-l = 0.04; % 摆杆重心到铰链的距离（平衡小车除轮子外的部分的重心到轮轴的距离，吊绳估计4cm）
-l = 0.09; % 加配重后
 m0 = m+M; % 平衡小车重量0.754kg
 d = 0.12;   % 转动惯量测试参数0.12m
 L = 0.465;  % 转动惯量测试参数0.465m
 T = 57;     % 转动惯量测试参数57s
 J = m0*g*d^2 / (16*pi^2*L) * (T/50)^2; % 平衡时的惯量（倾斜会变大），小角度倾斜时认为惯量近似不变
+%%-------------------------------------------------------------------------
+
+%% 包含航向角的模型
+M = 0.104; % 小车重（平衡小车轮子的重量52g*2：轮胎37.5g+联轴器13g+轮轴1.5g）
+m = 0.650; % 摆杆重（平衡小车除轮子外的重量650g：总重量754g-两个轮子重量104g）
+% m = 1.106; % 加配重后
+l = 0.04; % 摆杆重心到铰链的距离（平衡小车除轮子外的部分的重心到轮轴的距离，吊绳估计4cm）
+% l = 0.09; % 加配重后
+I = m*l^2/3; % 摆杆惯量（平衡小车除轮子外的部分相对于轮轴的惯量，按重心估算ml^2/3）
+g = 9.8;
 Lw = 0.17;  % 轮距0.17m 
 
-T = 31;
-mW = 0.0375;
-Rw = 0.075/2;
-d = 0.075;   % 转动惯量测试参数0.12m
-L = 0.17;  % 转动惯量测试参数0.465m
-g = 9.8;
-IW = mW*g*d^2 / (16*pi^2*L) * (T/50)^2;
+p = 2*I*I_w + I*M*R_w^2 + I*R_w^2*m + 2*I_w*l^2*m + M*R_w^2*l^2*m; %denominator for the A and B matrices
 
-p = I*(M+m)+M*m*l^2; %denominator for the A and B matrices
-
-A = [0      1              0           0         0          0;
-     0 -(I+m*l^2)*b/p  (m^2*g*l^2)/p   0         0          0;
-     0      0              0           1         0          0;
-     0 -(m*l*b)/p       m*g*l*(M+m)/p  0         0          0;
-     0      0              0           0         0          1;
-     0      0              0           0         0          0];
-B = [     0       0;
-     (I+m*l^2)/p  0;
-          0       0;
-        m*l/p     0;
-          0       0;
-          0       Lw/2/J];
+A = [0      1                          0                            0  0  0;
+     0      0                 (R_w^2*g*l^2*m^2)/p                   0  0  0;
+     0      0                          0                            1  0  0;
+     0      0       (l*m*(2*I_w*g + M*R_w^2*g + R_w^2*g*m))/p       0  0  0;
+     0      0                          0                            0  0  1;
+     0      0                          0                            0  0  0];
+B = [         0                                   0;
+     (R_w*(m*l^2 + I))/p                          0;
+              0                                   0;
+        (R_w*l*m)/p                               0;
+              0                                   0;
+  -R_w*d/(4*J*R_w^2 + I_w*Lw^2)        R_w*d/(4*J*R_w^2 + I_w*Lw^2)];
 C = [1 0 0 0 0 0;
      0 0 1 0 0 0;
      0 0 0 0 1 0];
@@ -163,8 +160,8 @@ controllability = rank(co)
 
 %% 连续系统lqr
 Q = C'*C;
-Q(1,1) = 50;
-Q(3,3) = 20;
+Q(1,1) = 20;
+Q(3,3) = 40;
 R = 1;
 K = lqr(A,B,Q,R)
 
@@ -182,14 +179,13 @@ sys_cl = ss(Ac,Bc,Cc,Dc,'statename',states,'inputname',inputs,'outputname',outpu
 t = 0:0.01:5;
 num = size(t);
 num = num(2);
-r =0.2*ones(num, 2);
-[y,t,x]=lsim(sys_cl,r,t);
+r =zeros(num, 2);
+state_init = [0, 0, 5/180*pi, 0, 0, 0];
+[y,t,x]=lsim(sys_cl,r,t,state_init);
 [AX,H1,H2] = plotyy(t,y(:,1),t,y(:,2),'plot');
 set(get(AX(1),'Ylabel'),'String','cart position (m)')
 set(get(AX(2),'Ylabel'),'String','pendulum angle (radians)')
 title('Step Response with LQR Control')
-plot(t, y(:,3))
-plot(t, x(:,6))
 
 %% 连续系统离散化
 Ts = 0.01;
@@ -204,7 +200,7 @@ poles = abs(pole(sysd_ss))
 Qd = C'*C;
 Qd(1,1) = 20;
 Qd(2,2) = 0;
-Qd(3,3) = 40;
+Qd(3,3) = 400;
 Qd(4,4) = 0;
 Qd(5,5) = 20;
 Qd(6,6) = 0;
@@ -225,33 +221,16 @@ sysd_cl = ss(Adc,Bdc,Cdc,Ddc,Ts,'statename',states,'inputname',inputs,'outputnam
 t = 0:0.01:5;
 num = size(t);
 num = num(2);
-r =0.2*ones(num, 2);
-[y,t,x]=lsim(sysd_cl,r,t);
+r =zeros(num, 2);
+state_init = [0, 0, 5/180*pi, 0, 5/180*pi, 0];
+[y,t,x]=lsim(sys_cl,r,t,state_init);
 [AX,H1,H2] = plotyy(t,y(:,1),t,y(:,2),'plot');
 set(get(AX(1),'Ylabel'),'String','cart position (m)')
 set(get(AX(2),'Ylabel'),'String','pendulum angle (radians)')
 title('Step Response with LQR Control')
 
-% plot(x(2:501,1))
-% plot([x(2:501,1), (x(2:501,1) - x(1:500,1))./0.01])
-
-%反算电机pwm
-ud = (-Kd * x')';
-acc_L = (ud(:,1) / 2 - ud(:,2)) / M; % 左轮加速度
-acc_R = (ud(:,1) / 2 + ud(:,2)) / M; % 右轮加速度
-motor_para_L = [-17.41, 0.25, -0.24];
-motor_para_R = [-19.93, 0.26, -0.04];
-PWM_L = (acc_L - motor_para_L(1) * x(:, 2) - motor_para_L(3)) / motor_para_L(2); % x(:, 2)用单轮当前线速度更准确
-PWM_R = (acc_R - motor_para_R(1) * x(:, 2) - motor_para_R(3)) / motor_para_R(2);
-
-F_L = (ud(:,1) / 2 - ud(:,2)); % 左轮力
-F_R = (ud(:,1) / 2 + ud(:,2)); % 右轮力
-motor_para = [-0.003933, 0.13038];
-Iwr = 0.00016;
-omega = x(:, 2)/Rw;
-omega_dot = (omega(2:end) - omega(1:end-1)) / Ts;
-omega_dot = [0; omega_dot];
-PWM_L = (F_L - motor_para(1)/Rw * omega + Iwr/Rw*omega_dot) / (motor_para(2)/Rw); % x(:, 2)用单轮当前线速度更准确
-PWM_R = (F_R - motor_para(1)/Rw * omega + Iwr/Rw*omega_dot) / (motor_para(2)/Rw);
-para1 = motor_para(1)/Rw/Rw
-para2 = motor_para(2)/Rw*0.01
+%电机pwm
+ud = (-Kd * x')'; % 单轮所需力矩
+motor_para = [-0.0049, 0.001587];
+PWM_L = (ud(:,1) - motor_para(1) * x(:, 2)/R_w) / motor_para(2); % x(:, 2)用单轮当前线速度更准确
+PWM_R = (ud(:,2) - motor_para(1) * x(:, 2)/R_w) / motor_para(2);

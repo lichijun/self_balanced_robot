@@ -59,41 +59,28 @@ void ResetStateVar(StateVariable* pState)
 // pwm: -100~100
 void BalanceCtrlLqr(StateVariable* pState, float* pPwmL, float* pPwmR)
 {
-	float wheel_mess = 0.104; // 两个轮子的重量
-	float accL, accR, FL, FR;
-	MotorCharacterCoef motorParaL = {-17.41, 0.25, -0.24}; // 空载测试数据回归得到
-	MotorCharacterCoef motorParaR = {-19.93, 0.26, -0.04}; // 空载测试数据回归得到
-	MotorCharacterCoef motorPara = {-2.7968, 0.0348, 0}; // 手册电机参数计算
+	float manualAdj = 5;
 #ifdef LQR_4_STATES
 	// float K[4] = {-5.4650, -3.2293, 16.7392, 0.8214}; // Q dia[50, 0, 20, 0]
-	float K[4] = {-3.4470, -2.5848, 16.8864, 0.7930}; // Q dia[20, 0, 40, 0]
+	float K[4] = {-1.7513, -1.1766, 4.2343, 0.1513}; // Q dia[10, 0, 40, 0]
 	float u = - K[0] * pState->x - K[1] * pState->x_dot 
 			  - K[2] * pState->phi - K[3] * pState->phi_dot; 
-	accL = u / wheel_mess / 2; // 每个轮子需要提供的加速度
-	accR = u / wheel_mess / 2;
+    float u1 = u;
+	float u2 = u;
 #elif defined(LQR_6_STATES)
-	// float K_Row1[6] = {-5.4650, -3.2293, 16.7392, 0.8214, 0, 0}; // Q dia[50, 0, 20, 0, 10, 0]
-	// float K_Row2[6] = {0, 0, 0, 0, 2.9062, 0.3589};
-	// float K_Row1[6] = {-3.4470, -2.5848, 16.8864, 0.7930, 0, 0}; // Q dia[20, 0, 40, 0, 20, 0]
-	// float K_Row2[6] = {0, 0, 0, 0, 4.0449, 0.4234};
-	float K_Row1[6] = {-3.2536, -2.8026, 23.6871, 1.0075, 0, 0}; // Q dia[20, 0, 40, 0, 20, 0] 加配重后
-	float K_Row2[6] = {0, 0, 0, 0, 4.1313, 0.5420};
+	float K_Row1[6] = {-2.4363, -1.3946, 4.2727, 0.1632, -0.3118, -0.0024}; // Q dia[20, 0, 40, 0, 20, 0]
+	float K_Row2[6] = {-0.4588, -0.2788, 1.1910, 0.0597, 3.4339, 0.1524};
 	float u1 = - K_Row1[0] * pState->x - K_Row1[1] * pState->x_dot 
 			   - K_Row1[2] * pState->phi - K_Row1[3] * pState->phi_dot
 			   - K_Row1[4] * pState->theta - K_Row1[5] * pState->theta_dot; 
 	float u2 = - K_Row2[0] * pState->x - K_Row2[1] * pState->x_dot 
 			   - K_Row2[2] * pState->phi - K_Row2[3] * pState->phi_dot
 			   - K_Row2[4] * pState->theta - K_Row2[5] * pState->theta_dot; 
-	accL = (u1/2 - u2) / wheel_mess; // 每个轮子需要提供的加速度
-	accR = (u1/2 + u2) / wheel_mess;
+	*pPwmL = (u1 - motorPara.a * pState->wheel_vel_l) / motorPara.b;
+	*pPwmR = (u2 - motorPara.a * pState->wheel_vel_r) / motorPara.b;
 #endif
-	*pPwmL = (accL - motorParaL.a * pState->wheel_vel_l - motorParaL.c) / motorParaL.b;
-	*pPwmR = (accR - motorParaR.a * pState->wheel_vel_r - motorParaR.c) / motorParaR.b;
-	// 使用更严谨的模型
-	FL = u1/2 - u2; // 每个轮子需要提供的摩擦力
-	FR = u1/2 + u2;
-	*pPwmL = (FL - motorPara.a * pState->wheel_vel_l - motorPara.c) / motorPara.b;
-	*pPwmR = (FR - motorPara.a * pState->wheel_vel_r - motorPara.c) / motorPara.b;
+	*pPwmL = (u1 - motorPara.a * pState->wheel_vel_l) / motorPara.b;
+	*pPwmR = (u2 - motorPara.a * pState->wheel_vel_r) / motorPara.b;
 	if (*pPwmL > 100)
 		*pPwmL = 100;
 	if (*pPwmR > 100)
